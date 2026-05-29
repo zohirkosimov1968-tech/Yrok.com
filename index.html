@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>yrok.com</title>
+    <style>
+        :root { --red: #E50914; --bg: #FFFFFF; --gray: #F5F5F5; --text: #1F1F1F; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+        body { background: var(--bg); color: var(--text); padding-bottom: 50px; }
+        header { background: var(--red); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+        .logo { font-size: 22px; font-weight: bold; }
+        .nav-right { display: flex; align-items: center; gap: 15px; }
+        .btn-google { background: white; color: var(--text); border: 1px solid #ccc; padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+        .btn-add, .profile-icon { background: white; color: var(--red); width: 38px; height: 38px; border-radius: 50%; border: none; font-size: 24px; font-weight: bold; display: none; justify-content: center; align-items: center; cursor: pointer; }
+        .profile-icon { font-size: 20px; }
+        main { padding: 20px; }
+        h2 { font-size: 24px; margin-bottom: 20px; border-left: 4px solid var(--red); padding-left: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .card { background: var(--gray); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .card iframe, .card video { width: 100%; height: 180px; background: black; border: none; display: block; }
+        .card-info { padding: 12px; }
+        .btn-delete { background: #ffebee; color: var(--red); border: 1px solid var(--red); padding: 8px 12px; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 8px; text-align: center; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 100; padding: 15px; }
+        .modal-content { background: white; padding: 20px; border-radius: 15px; width: 100%; max-width: 400px; position: relative; }
+        .close { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #999; }
+        input { width: 100%; padding: 10px; margin: 10px 0 15px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
+        .btn-red { background: var(--red); color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">yrok.com</div>
+        <div class="nav-right">
+            <button class="btn-add" id="addBtn" onclick="toggleModal('addModal', true)">+</button>
+            <button class="btn-google" id="loginBtn" onclick="login()">Войти через Google</button>
+            <div class="profile-icon" id="avatarBtn" onclick="toggleModal('profileModal', true)">👤</div>
+        </div>
+    </header>
+    <main>
+        <h2>Все видео уроки</h2>
+        <div class="grid" id="mainFeed"></div>
+    </main>
+    <div class="modal" id="addModal">
+        <div class="modal-content">
+            <span class="close" onclick="toggleModal('addModal', false)">&times;</span>
+            <h3>Добавить видео урок</h3>
+            <input type="text" id="videoTitle" placeholder="Название видео">
+            <input type="text" id="videoUrl" placeholder="Ссылка на YouTube">
+            <button class="btn-red" onclick="saveVideo()">Опубликовать</button>
+        </div>
+    </div>
+    <div class="modal" id="profileModal">
+        <div class="modal-content" style="max-height: 85vh; overflow-y: auto;">
+            <span class="close" onclick="toggleModal('profileModal', false)">&times;</span>
+            <h3>Мой профиль</h3>
+            <input type="text" id="usernameInput" placeholder="Изменить никнейм">
+            <button class="btn-red" onclick="saveNickname()">Сохранить ник</button>
+            <hr style="margin:15px 0; border:0; border-top:1px solid #eee;">
+            <h4>Мои публикации:</h4>
+            <div id="myVideosFeed" class="grid" style="margin-top:10px;"></div>
+            <button class="btn-red" style="background:#aaa; margin-top:15px;" onclick="logout()">Выйти</button>
+        </div>
+    </div>
+    <script>
+        let dbVideos = JSON.parse(localStorage.getItem('local_db_videos')) || [];
+        let dbUser = JSON.parse(localStorage.getItem('local_db_user')) || null;
+        dbVideos = dbVideos.map((v, i) => { if (!v.id) v.id = 'vid_' + Date.now() + '_' + i; return v; });
+        localStorage.setItem('local_db_videos', JSON.stringify(dbVideos));
+        function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'flex' : 'none'; }
+        function updateUI() {
+            if (dbUser) {
+                document.getElementById('loginBtn').style.display = 'none';
+                document.getElementById('addBtn').style.display = 'flex';
+                document.getElementById('avatarBtn').style.display = 'flex';
+                document.getElementById('usernameInput').value = dbUser.username;
+            } else {
+                document.getElementById('loginBtn').style.display = 'block';
+                document.getElementById('addBtn').style.display = 'none';
+                document.getElementById('avatarBtn').style.display = 'none';
+            }
+            render();
+        }
+        function login() { dbUser = { uid: "user_zohir", username: "Zohir_Блогер" }; localStorage.setItem('local_db_user', JSON.stringify(dbUser)); updateUI(); }
+        function logout() { dbUser = null; localStorage.removeItem('local_db_user'); toggleModal('profileModal', false); updateUI(); }
+        function saveNickname() { const name = document.getElementById('usernameInput').value; if(!name) return; dbUser.username = name; localStorage.setItem('local_db_user', JSON.stringify(dbUser)); dbVideos.forEach(v => { if(v.userId === dbUser.uid) v.author = name; }); localStorage.setItem('local_db_videos', JSON.stringify(dbVideos)); alert("Ник изменен!"); render(); }
+        function saveVideo() {
+            const title = document.getElementById('videoTitle').value; let url = document.getElementById('videoUrl').value; if(!title || !url) return alert("Заполните поля");
+            if (url.includes('v=')) url = 'https://www.youtube.com/embed/' + url.split('v=')[1].split('&')[0];
+            else if (url.includes('youtu.be/')) url = 'https://www.youtube.com/embed/' + url.split('youtu.be/')[1];
+            dbVideos.push({ id: 'vid_' + Date.now(), title, url, userId: dbUser.uid, author: dbUser.username });
+            localStorage.setItem('local_db_videos', JSON.stringify(dbVideos)); toggleModal('addModal', false); document.getElementById('videoTitle').value = ""; document.getElementById('videoUrl').value = ""; render();
+        }
+        function deleteVideo(id) { if (confirm("Удалить это видео?")) { dbVideos = dbVideos.filter(v => v.id !== id); localStorage.setItem('local_db_videos', JSON.stringify(dbVideos)); render(); } }
+        function render() {
+            const mainFeed = document.getElementById('mainFeed'); const myFeed = document.getElementById('myVideosFeed'); mainFeed.innerHTML = ""; myFeed.innerHTML = "";
+            dbVideos.forEach(v => {
+                let media = v.url.includes('youtube.com') ? `<iframe src="${v.url}" allowfullscreen></iframe>` : `<video src="${v.url}" controls></video>`;
+                mainFeed.insertAdjacentHTML('beforeend', `<div class="card">${media}<div class="card-info"><h3>${v.title}</h3><p>Автор: <b>${v.author}</b></p></div></div>`);
+                if(dbUser && v.userId === dbUser.uid) { myFeed.insertAdjacentHTML('beforeend', `<div class="card">${media}<div class="card-info"><h3>${v.title}</h3><p>Автор: <b>${v.author}</b></p><button class="btn-delete" onclick="deleteVideo('${v.id}')">❌ Удалить видео</button></div></div>`); }
+            });
+        }
+        updateUI();
+    </script>
+</body>
+</html>
